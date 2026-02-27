@@ -7,7 +7,6 @@ pdf2image
 Pillow
 pytesseract
 mrz
-spacy
 dateparser
 phonenumbers
 pydantic

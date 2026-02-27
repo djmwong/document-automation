@@ -41,11 +41,6 @@ source venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
 
-# spaCy model
-echo ""
-echo "Downloading spaCy model..."
-python -m spacy download en_core_web_sm
-
 # Playwright
 echo ""
 echo "Installing Playwright..."
