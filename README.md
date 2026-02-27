@@ -30,7 +30,18 @@ A web application that extracts data from passport and G-28 forms using computer
 
 ## Installation
 
-### Quick Setup
+### Option 1: Automated Setup (Recommended)
+
+```bash
+# Run the setup script
+chmod +x setup.sh
+./setup.sh
+
+# Configure OpenAI API key
+echo "OPENAI_API_KEY=your-key-here" > .env
+```
+
+### Option 2: Manual Setup
 
 ```bash
 # Create virtual environment
@@ -40,18 +51,17 @@ source venv/bin/activate
 # Install Python dependencies
 pip install -r requirements.txt
 
-# Install system dependencies (macOS)
+# Install system dependencies
+# macOS:
 brew install tesseract poppler
+
+# Ubuntu/Debian:
+# sudo apt-get install tesseract-ocr poppler-utils
 
 # Install Playwright browsers
 playwright install chromium
-```
 
-### Configure API Key
-
-For best passport extraction accuracy, configure OpenAI:
-
-```bash
+# Configure OpenAI API key (for best passport extraction)
 echo "OPENAI_API_KEY=your-key-here" > .env
 ```
 
