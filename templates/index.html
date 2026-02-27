@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Automation - Passport & G-28 Extractor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .drop-zone {
+            border: 2px dashed #cbd5e1;
+            transition: all 0.3s ease;
+        }
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+        }
+        .drop-zone.uploading {
+            border-color: #22c55e;
+            background-color: #f0fdf4;
+        }
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <!-- Header -->
+        <header class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">Document Automation System</h1>
+            <p class="text-gray-600 text-lg">Upload passport and G-28 forms to automatically populate legal forms</p>
+        </header>
+
+        <!-- Main Content -->
+        <div class="grid md:grid-cols-2 gap-8 mb-8">
+            <!-- Passport Upload -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex items-center mb-4">
+                    <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
+                        <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-semibold text-gray-800">Passport</h2>
+                        <p class="text-sm text-gray-500">Upload passport image or PDF</p>
+                    </div>
+                </div>
+                
+                <div id="passport-dropzone" class="drop-zone rounded-lg p-8 text-center cursor-pointer" 
+                     ondrop="handleDrop(event, 'passport')" 
+                     ondragover="handleDragOver(event, 'passport')"
+                     ondragleave="handleDragLeave(event, 'passport')"
+                     onclick="document.getElementById('passport-input').click()">
+                    <input type="file" id="passport-input" class="hidden" accept=".pdf,.jpg,.jpeg,.png" 
+                           onchange="handleFileSelect(event, 'passport')">
+                    <div id="passport-upload-content">
+                        <svg class="w-12 h-12 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                        </svg>
+                        <p class="text-gray-600 mb-2">Drag and drop or click to upload</p>
+                        <p class="text-sm text-gray-400">PDF, JPEG, PNG (max 10MB)</p>
+                    </div>
+                    <div id="passport-loading" class="hidden">
+                        <div class="spinner mx-auto mb-4"></div>
+                        <p class="text-blue-600">Extracting passport data...</p>
+                    </div>
+                </div>
+                
+                <div id="passport-status" class="mt-4 hidden">
+                    <div class="flex items-center text-green-600">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        <span id="passport-status-text"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- G-28 Upload -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex items-center mb-4">
+                    <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mr-4">
+                        <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-semibold text-gray-800">G-28 Form</h2>
+                        <p class="text-sm text-gray-500">Upload G-28 attorney form</p>
+                    </div>
+                </div>
+                
+                <div id="g28-dropzone" class="drop-zone rounded-lg p-8 text-center cursor-pointer"
+                     ondrop="handleDrop(event, 'g28')" 
+                     ondragover="handleDragOver(event, 'g28')"
+                     ondragleave="handleDragLeave(event, 'g28')"
+                     onclick="document.getElementById('g28-input').click()">
+                    <input type="file" id="g28-input" class="hidden" accept=".pdf,.jpg,.jpeg,.png"
+                           onchange="handleFileSelect(event, 'g28')">
+                    <div id="g28-upload-content">
+                        <svg class="w-12 h-12 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                        </svg>
+                        <p class="text-gray-600 mb-2">Drag and drop or click to upload</p>
+                        <p class="text-sm text-gray-400">PDF, JPEG, PNG (max 10MB)</p>
+                    </div>
+                    <div id="g28-loading" class="hidden">
+                        <div class="spinner mx-auto mb-4"></div>
+                        <p class="text-purple-600">Extracting G-28 data...</p>
+                    </div>
+                </div>
+                
+                <div id="g28-status" class="mt-4 hidden">
+                    <div class="flex items-center text-green-600">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        <span id="g28-status-text"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Extracted Data Preview -->
+        <div id="extracted-data" class="bg-white rounded-xl shadow-lg p-6 mb-8 hidden fade-in">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-6">Extracted Data Preview</h2>
+            
+            <div class="grid md:grid-cols-2 gap-8">
+                <!-- Passport Data -->
+                <div id="passport-data-section" class="hidden">
+                    <h3 class="text-lg font-medium text-gray-700 mb-4 flex items-center">
+                        <span class="w-3 h-3 bg-blue-500 rounded-full mr-2"></span>
+                        Passport Information
+                    </h3>
+                    <div id="passport-source-note" class="hidden mb-3 text-sm text-amber-600 bg-amber-50 p-2 rounded-lg">
+                        ℹ️ Name extracted from G-28 beneficiary section. Upload passport for complete data.
+                    </div>
+                    <div id="passport-fields" class="space-y-3"></div>
+                </div>
+                
+                <!-- Attorney Data -->
+                <div id="attorney-data-section" class="hidden">
+                    <h3 class="text-lg font-medium text-gray-700 mb-4 flex items-center">
+                        <span class="w-3 h-3 bg-purple-500 rounded-full mr-2"></span>
+                        Attorney Information
+                    </h3>
+                    <div id="attorney-fields" class="space-y-3"></div>
+                </div>
+            </div>
+            
+            <div class="mt-6 pt-6 border-t border-gray-200">
+                <div id="attorney-extraction-info" class="hidden mb-2">
+                    <p class="text-sm text-gray-500">
+                        <span class="font-medium">Attorney Extraction:</span>
+                        <span id="attorney-extraction-method"></span>
+                        (<span id="attorney-confidence-score"></span>)
+                    </p>
+                </div>
+                <div id="passport-extraction-info" class="hidden">
+                    <p class="text-sm text-gray-500">
+                        <span class="font-medium">Passport Extraction:</span>
+                        <span id="passport-extraction-method"></span>
+                        (<span id="passport-confidence-score"></span>)
+                    </p>
+                </div>
+                <p class="text-sm text-gray-500 hidden" id="old-extraction-info">
+                    <span class="font-medium">Extraction Method:</span>
+                    <span id="extraction-method"></span>
+                </p>
+                <p class="text-sm text-gray-500 hidden">
+                    <span class="font-medium">Confidence Score:</span>
+                    <span id="confidence-score"></span>
+                </p>
+            </div>
+        </div>
+
+        <!-- Fill Form Button -->
+        <div id="fill-form-section" class="text-center hidden fade-in">
+            <button id="fill-form-btn" onclick="fillForm()" 
+                    class="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-lg text-lg font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300">
+                <span class="flex items-center justify-center">
+                    <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                    </svg>
+                    Populate Form
+                </span>
+            </button>
+            <p class="text-gray-500 mt-4 text-sm">Opens the target form and fills in extracted data automatically</p>
+        </div>
+
+        <!-- Form Filling Status -->
+        <div id="form-status" class="text-center mt-6 hidden">
+            <div id="form-loading" class="hidden">
+                <div class="spinner mx-auto mb-4"></div>
+                <p class="text-blue-600">Opening browser and filling form...</p>
+            </div>
+            <div id="form-success" class="hidden">
+                <div class="flex items-center justify-center text-green-600 mb-2">
+                    <svg class="w-8 h-8 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span class="text-lg font-medium">Form filled successfully!</span>
+                </div>
+                <p class="text-gray-600">Please review the form in your browser. The form has NOT been submitted.</p>
+            </div>
+            <div id="form-error" class="hidden text-red-600">
+                <p id="form-error-text"></p>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="mt-12 text-center text-gray-500 text-sm">
+            <p>Document Automation System | Uses MRZ parsing, OCR, and NLP for extraction</p>
+        </footer>
+    </div>
+
+    <script>
+        let sessionId = null;
+        let extractedData = { passport: null, attorney: null };
+
+        function handleDragOver(event, type) {
+            event.preventDefault();
+            document.getElementById(`${type}-dropzone`).classList.add('dragover');
+        }
+
+        function handleDragLeave(event, type) {
+            event.preventDefault();
+            document.getElementById(`${type}-dropzone`).classList.remove('dragover');
+        }
+
+        function handleDrop(event, type) {
+            event.preventDefault();
+            document.getElementById(`${type}-dropzone`).classList.remove('dragover');
+            
+            const files = event.dataTransfer.files;
+            if (files.length > 0) {
+                uploadFile(files[0], type);
+            }
+        }
+
+        function handleFileSelect(event, type) {
+            const file = event.target.files[0];
+            if (file) {
+                uploadFile(file, type);
+            }
+        }
+
+        async function uploadFile(file, type) {
+            const dropzone = document.getElementById(`${type}-dropzone`);
+            const uploadContent = document.getElementById(`${type}-upload-content`);
+            const loading = document.getElementById(`${type}-loading`);
+            const status = document.getElementById(`${type}-status`);
+            const statusText = document.getElementById(`${type}-status-text`);
+
+            // Show loading state
+            dropzone.classList.add('uploading');
+            uploadContent.classList.add('hidden');
+            loading.classList.remove('hidden');
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            // Add session_id if we already have one (for both document types)
+            const baseEndpoint = type === 'passport' ? '/upload/passport' : '/upload/g28';
+            const endpoint = sessionId ? `${baseEndpoint}?session_id=${sessionId}` : baseEndpoint;
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    sessionId = result.session_id;
+                    
+                    if (type === 'passport') {
+                        extractedData.passport = result.data.passport;
+                    } else {
+                        extractedData.attorney = result.data.attorney;
+                        // G-28 also extracts beneficiary data for passport section
+                        if (result.data.passport) {
+                            extractedData.passport = result.data.passport;
+                        }
+                    }
+
+                    // Show success status
+                    loading.classList.add('hidden');
+                    uploadContent.classList.remove('hidden');
+                    status.classList.remove('hidden');
+                    statusText.textContent = result.message;
+
+                    // Update preview
+                    updatePreview();
+                } else {
+                    throw new Error(result.detail || 'Upload failed');
+                }
+            } catch (error) {
+                loading.classList.add('hidden');
+                uploadContent.classList.remove('hidden');
+                status.classList.remove('hidden');
+                statusText.textContent = `Error: ${error.message}`;
+                status.querySelector('div').classList.remove('text-green-600');
+                status.querySelector('div').classList.add('text-red-600');
+            }
+
+            dropzone.classList.remove('uploading');
+        }
+
+        function updatePreview() {
+            const dataSection = document.getElementById('extracted-data');
+            const passportSection = document.getElementById('passport-data-section');
+            const attorneySection = document.getElementById('attorney-data-section');
+            const fillFormSection = document.getElementById('fill-form-section');
+
+            let hasData = false;
+
+            // Update passport fields
+            if (extractedData.passport) {
+                hasData = true;
+                passportSection.classList.remove('hidden');
+                const fieldsDiv = document.getElementById('passport-fields');
+                fieldsDiv.innerHTML = formatFields(extractedData.passport, [
+                    ['last_name', 'Last Name'],
+                    ['first_name', 'First Name'],
+                    ['middle_name', 'Middle Name'],
+                    ['passport_number', 'Passport Number'],
+                    ['country_of_issue', 'Country of Issue'],
+                    ['nationality', 'Nationality'],
+                    ['date_of_birth', 'Date of Birth'],
+                    ['place_of_birth', 'Place of Birth'],
+                    ['sex', 'Sex'],
+                    ['date_of_issue', 'Date of Issue'],
+                    ['date_of_expiration', 'Expiration Date']
+                ]);
+                
+                // Show note if passport data is incomplete (from G-28 beneficiary)
+                const sourceNote = document.getElementById('passport-source-note');
+                if (!extractedData.passport.passport_number && extractedData.passport.extraction_method === 'G28_BENEFICIARY') {
+                    sourceNote.classList.remove('hidden');
+                } else {
+                    sourceNote.classList.add('hidden');
+                }
+                
+                // Show passport extraction info
+                document.getElementById('passport-extraction-info').classList.remove('hidden');
+                document.getElementById('passport-extraction-method').textContent = extractedData.passport.extraction_method || 'N/A';
+                document.getElementById('passport-confidence-score').textContent = 
+                    extractedData.passport.confidence_score ? 
+                    `${(extractedData.passport.confidence_score * 100).toFixed(0)}%` : 'N/A';
+            }
+
+            // Update attorney fields
+            if (extractedData.attorney) {
+                hasData = true;
+                attorneySection.classList.remove('hidden');
+                const fieldsDiv = document.getElementById('attorney-fields');
+                fieldsDiv.innerHTML = formatFields(extractedData.attorney, [
+                    ['last_name', 'Last Name'],
+                    ['first_name', 'First Name'],
+                    ['middle_name', 'Middle Name'],
+                    ['street_address', 'Street Address'],
+                    ['apt_ste_flr', 'Apt/Suite/Floor'],
+                    ['city', 'City'],
+                    ['state', 'State'],
+                    ['zip_code', 'ZIP Code'],
+                    ['country', 'Country'],
+                    ['daytime_phone', 'Daytime Phone'],
+                    ['mobile_phone', 'Mobile Phone'],
+                    ['email', 'Email'],
+                    ['licensing_authority', 'Licensing Authority'],
+                    ['bar_number', 'Bar Number'],
+                    ['law_firm_name', 'Law Firm/Organization'],
+                    ['online_account_number', 'Online Account Number']
+                ]);
+                
+                // Show attorney extraction info
+                document.getElementById('attorney-extraction-info').classList.remove('hidden');
+                document.getElementById('attorney-extraction-method').textContent = extractedData.attorney.extraction_method || 'N/A';
+                document.getElementById('attorney-confidence-score').textContent = 
+                    extractedData.attorney.confidence_score ? 
+                    `${(extractedData.attorney.confidence_score * 100).toFixed(0)}%` : 'N/A';
+            }
+
+            if (hasData) {
+                dataSection.classList.remove('hidden');
+                fillFormSection.classList.remove('hidden');
+            }
+        }
+
+        function formatFields(data, fieldMap) {
+            return fieldMap.map(([key, label]) => {
+                const value = data[key] || '—';
+                const hasValue = data[key] ? 'text-gray-800' : 'text-gray-400';
+                return `
+                    <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                        <span class="text-gray-600 text-sm">${label}</span>
+                        <span class="${hasValue} font-medium">${value}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function fillForm() {
+            const btn = document.getElementById('fill-form-btn');
+            const statusSection = document.getElementById('form-status');
+            const loading = document.getElementById('form-loading');
+            const success = document.getElementById('form-success');
+            const error = document.getElementById('form-error');
+
+            // Reset states
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+            statusSection.classList.remove('hidden');
+            loading.classList.remove('hidden');
+            success.classList.add('hidden');
+            error.classList.add('hidden');
+
+            try {
+                const response = await fetch('/fill-form-sync', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        session_id: sessionId,
+                        target_url: 'https://mendrika-alma.github.io/form-submission/'
+                    })
+                });
+
+                const result = await response.json();
+
+                loading.classList.add('hidden');
+
+                if (result.success) {
+                    success.classList.remove('hidden');
+                } else {
+                    throw new Error(result.error || 'Form filling failed');
+                }
+            } catch (err) {
+                loading.classList.add('hidden');
+                error.classList.remove('hidden');
+                document.getElementById('form-error-text').textContent = `Error: ${err.message}`;
+            }
+
+            btn.disabled = false;
+            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+    </script>
+</body>
+</html>
